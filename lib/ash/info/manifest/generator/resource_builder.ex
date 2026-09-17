@@ -180,17 +180,23 @@ defmodule Ash.Info.Manifest.Generator.ResourceBuilder do
   derived with `Ash.Query.Aggregate.aggregate_type/2`. That covers aggregates
   with `related?: false` and aggregates over other aggregates. Returns
   `{type, constraints}`. Falls back to the aggregate's declared `type` and
-  `constraints` when that resolver returns an error, as it does for `custom`
-  aggregates.
+  `constraints` when that resolver cannot resolve the type, as for `custom`
+  aggregates and aggregates over them.
   """
   @spec resolve_aggregate_type(Ash.Resource.t(), Ash.Resource.Aggregate.t()) ::
           {Ash.Type.t() | nil, Keyword.t()}
   def resolve_aggregate_type(resource, aggregate) do
     case Ash.Query.Aggregate.aggregate_type(resource, aggregate) do
       {:ok, type, constraints} -> {type, constraints}
-      _other -> {aggregate.type, aggregate.constraints || []}
+      _other -> declared_aggregate_type(aggregate)
     end
+  rescue
+    # `Ash.Query.Aggregate.aggregate_type/2` matches `{:ok, _, _}` on a nested
+    # aggregate's type, so it raises when that aggregate is `custom`.
+    MatchError -> declared_aggregate_type(aggregate)
   end
+
+  defp declared_aggregate_type(aggregate), do: {aggregate.type, aggregate.constraints || []}
 
   defp build_relationships(resource, opts) do
     resource
