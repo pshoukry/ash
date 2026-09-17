@@ -177,28 +177,16 @@ defmodule Ash.Info.Manifest.Generator.ResourceBuilder do
   Resolve the type and constraints of an aggregate on `resource`.
 
   An aggregate's `type` is `nil` unless the DSL declares one, so the type is
-  derived from the aggregate kind and the field it aggregates on the related
-  resource. Returns `{type, constraints}`. Falls back to the aggregate's
-  declared `type` and `constraints` when the kind and field do not determine
-  a type.
+  derived with `Ash.Query.Aggregate.aggregate_type/2`. That covers aggregates
+  with `related?: false` and aggregates over other aggregates. Returns
+  `{type, constraints}`. Falls back to the aggregate's declared `type` and
+  `constraints` when that resolver returns an error, as it does for `custom`
+  aggregates.
   """
   @spec resolve_aggregate_type(Ash.Resource.t(), Ash.Resource.Aggregate.t()) ::
           {Ash.Type.t() | nil, Keyword.t()}
   def resolve_aggregate_type(resource, aggregate) do
-    field =
-      if aggregate.field do
-        related = Ash.Resource.Info.related(resource, aggregate.relationship_path)
-
-        if related do
-          Ash.Resource.Info.attribute(related, aggregate.field) ||
-            Ash.Resource.Info.calculation(related, aggregate.field)
-        end
-      end
-
-    field_type = if field, do: field.type
-    field_constraints = if field, do: Map.get(field, :constraints, []), else: []
-
-    case Ash.Query.Aggregate.kind_to_type(aggregate.kind, field_type, field_constraints) do
+    case Ash.Query.Aggregate.aggregate_type(resource, aggregate) do
       {:ok, type, constraints} -> {type, constraints}
       _other -> {aggregate.type, aggregate.constraints || []}
     end
