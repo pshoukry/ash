@@ -173,7 +173,18 @@ defmodule Ash.Info.Manifest.Generator.ResourceBuilder do
     }
   end
 
-  defp resolve_aggregate_type(resource, aggregate) do
+  @doc """
+  Resolve the type and constraints of an aggregate on `resource`.
+
+  An aggregate's `type` is `nil` unless the DSL declares one, so the type is
+  derived from the aggregate kind and the field it aggregates on the related
+  resource. Returns `{type, constraints}`. Falls back to the aggregate's
+  declared `type` and `constraints` when the kind and field do not determine
+  a type.
+  """
+  @spec resolve_aggregate_type(Ash.Resource.t(), Ash.Resource.Aggregate.t()) ::
+          {Ash.Type.t() | nil, Keyword.t()}
+  def resolve_aggregate_type(resource, aggregate) do
     field =
       if aggregate.field do
         related = Ash.Resource.Info.related(resource, aggregate.relationship_path)
